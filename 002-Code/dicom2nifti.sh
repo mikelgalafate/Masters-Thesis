@@ -1,22 +1,35 @@
 #!/bin/bash
 
-path=$1
-output_path=$2
-#"/home/mikelgalafate/NAS/MATERIA_OSCURA/TFMs/2022_MikelGalafate/001-Data/CERMEP-IDB-MRXFDG_Database/NII_with_FDG_NAC/sourcedata"
-
-for subject in $(ls $path)
+for ARGUMENT in "$@"
 do
-	echo "Processing subject: $subject";
-	for seq in $(ls $path/$subject)
-	do
-		echo -e "\tSequence: $seq"
+   KEY=$(echo $ARGUMENT | cut -f1 -d=)
 
-		seq_path="$output_path/$subject/$seq"
-		if [ ! -d $seq_path ]; then
-			mkdir -p $seq_path
+   KEY=${KEY^^}
+   KEY_LENGTH=${#KEY}
+   VALUE="${ARGUMENT:$KEY_LENGTH+1}"
+
+   export "${KEY[@]:1}=$VALUE"
+
+done
+
+for SUBJECT in $(ls $INPUT_PATH)
+do
+	echo "Processing subject: $SUBJECT"
+
+	SUBJECT_PATH="$INPUT_PATH/$SUBJECT"
+
+	for SEQUENCE in $(ls $SUBJECT_PATH)
+	do
+		echo -e "\tSequence: $SEQUENCE"
+
+		OUTPUT_SEQUENCE_PATH="$OUTPUT_PATH/$SUBJECT/$SEQUENCE"
+		INPUT_SEQUENCE_PATH="$SUBJECT_PATH/$SEQUENCE"
+
+		if [ ! -d $SEQ_PATH ]; then
+			mkdir -p $SEQ_PATH
 		fi
-		if [ -z "$(ls -A $seq_path)" ]; then
-			dcm2niix -z y -f ${subject}_${seq} -o $seq_path $path/$subject/$seq
+		if [ -z "$(ls -A $SEQ_PATH)" ]; then
+			echo -e "dcm2niix -z y -f ${SUBJECT}_${SEQUENCE} -o $OUTPUT_SEQUENCE_PATH $INPUT_SEQUENCE_PATH"
 		fi
 
 	done
