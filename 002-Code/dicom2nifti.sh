@@ -12,6 +12,10 @@ do
 
 done
 
+if [ -z ${INPUT_PATH+x} ]; then echo "var is unset"; else echo "var is set to '$INPUT_PATH'"; fi
+if [ -z ${OUTPUT_PATH+x} ]; then echo "var is unset"; else echo "var is set to '$OUTPUT_PATH'"; fi
+exit
+
 for SUBJECT in $(ls $INPUT_PATH)
 do
 	echo "Processing subject: $SUBJECT"
