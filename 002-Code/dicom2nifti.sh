@@ -12,9 +12,15 @@ do
 
 done
 
-if [ -z ${INPUT_PATH+x} ]; then echo "var is unset"; else echo "var is set to '$INPUT_PATH'"; fi
-if [ -z ${OUTPUT_PATH+x} ]; then echo "var is unset"; else echo "var is set to '$OUTPUT_PATH'"; fi
-exit
+if [ -z ${INPUT_PATH+x} ]; then
+	echo "ERROR: No input path given. You must specify the path to the data to be converted to nifti with the -input_path variable."
+	exit
+fi
+if [ -z ${OUTPUT_PATH+x} ]; then
+	echo "ERROR: No output path given. You must specify the path to create the nifti with the -output_path variable."
+	exit
+fi
+
 
 for SUBJECT in $(ls $INPUT_PATH)
 do
