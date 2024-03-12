@@ -35,11 +35,11 @@ do
 		OUTPUT_SEQUENCE_PATH="$OUTPUT_PATH/$SUBJECT/$SEQUENCE"
 		INPUT_SEQUENCE_PATH="$SUBJECT_PATH/$SEQUENCE"
 
-		if [ ! -d $SEQ_PATH ]; then
+		if [ ! -d $OUTPUT_SEQUENCE_PATH ]; then
 			mkdir -p $SEQ_PATH
 		fi
-		if [ -z "$(ls -A $SEQ_PATH)" ]; then
-			echo -e "dcm2niix -z y -f ${SUBJECT}_${SEQUENCE} -o $OUTPUT_SEQUENCE_PATH $INPUT_SEQUENCE_PATH"
+		if [ -z "$(ls -A $OUTPUT_SEQUENCE_PATH)" ]; then
+			dcm2niix -z y -f ${SUBJECT}_${SEQUENCE} -o $OUTPUT_SEQUENCE_PATH $INPUT_SEQUENCE_PATH
 		fi
 
 	done
