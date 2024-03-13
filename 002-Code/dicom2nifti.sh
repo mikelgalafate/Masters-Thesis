@@ -21,7 +21,6 @@ if [ -z ${OUTPUT_PATH+x} ]; then
 	exit
 fi
 
-
 for SUBJECT in $(ls $INPUT_PATH)
 do
 	echo "Processing subject: $SUBJECT"
@@ -36,14 +35,14 @@ do
 		INPUT_SEQUENCE_PATH="$SUBJECT_PATH/$SEQUENCE"
 
 		if [ ! -d $OUTPUT_SEQUENCE_PATH ]; then
-			mkdir -p $SEQ_PATH
+			mkdir -p $OUTPUT_SEQUENCE_PATH
 		fi
 		if [ -z "$(ls -A $OUTPUT_SEQUENCE_PATH)" ]; then
 			dcm2niix -z y -f ${SUBJECT}_${SEQUENCE} -o $OUTPUT_SEQUENCE_PATH $INPUT_SEQUENCE_PATH
+			echo -e "\tSequence: $SEQUENCE  processed"
+		else
+			echo -e "\e[1A\e[K\tSequence: $SEQUENCE was already processed"
 		fi
-
 	done
 	echo "";
-
 done
-
