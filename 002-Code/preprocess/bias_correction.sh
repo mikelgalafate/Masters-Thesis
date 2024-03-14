@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Read variables
 for ARGUMENT in "$@"
 do
    KEY=$(echo $ARGUMENT | cut -f1 -d=)
@@ -21,28 +22,36 @@ if [ -z ${SEQUENCE+x} ]; then
 	exit
 fi
 
-cd $INPUT_PATH
+
+echo -e "Copying data.."
+# Remove output directory if already exists
+if [ -d ${INPUT_PATH}_BC ]; then
+	rm -rf ${INPUT_PATH}_BC
+fi
+# Copy the dataset to the output directory
+cp -r $INPUT_PATH ${INPUT_PATH}_BC
+
+echo -e "Starting!"
+
+cd ${INPUT_PATH}_BC || exit
 
 for SUBJECT in $(ls -R sub-*); do
-	if  [[ $SUBJECT =~ $SEQUENCE:$ ]]; then
+	# Check the type of file
+	if  [[ $SUBJECT =~ $SEQUENCE:$ ]]; then # The file is a directory containing the desired sequence
+		# Save the path to the sequence directory
 		SUBJECT_PATH="$INPUT_PATH/${SUBJECT::-1}"
 		SUBJECT_OUTPUT_PATH="${INPUT_PATH}_BC/${SUBJECT::-1}"
 		echo -e "New subject to be processed found: $SUBJECT_PATH"
 		continue
-	elif [[ $SUBJECT =~ ([A-Za-z0-9._%+-]+)?$SEQUENCE([A-Za-z0-9._%+-]+)?.nii.gz$ ]]; then
-		FILE_NAME=${SUBJECT::-7}
-		echo -e "\tFound $FILE_NAME at $SUBJECT_PATH"
-	else
-		continue
+	elif [[ $SUBJECT =~ ([A-Za-z0-9._%+-]+)?$SEQUENCE([A-Za-z0-9._%+-]+)?.nii.gz$ ]]; then # The file is a nifti file of the desired sequence
+		# Process the file
+		echo -e "\tFound ${SUBJECT::-7} at $SUBJECT_PATH"
+		echo -e "\tProcessing volume ${SUBJECT::-7}"
+		echo -e "\tOutput volume path: $SUBJECT_OUTPUT_PATH/$SUBJECT\n"
+		if [ ! -d $SUBJECT_OUTPUT_PATH ]; then
+			mkdir -p $SUBJECT_OUTPUT_PATH
+		fi
+		echo -e "\tVolume ${SUBJECT::-7} submitted for bias correction on `date`"
+		Slicer --launch N4ITKBiasFieldCorrection --convergencethreshold 0.00001 --iterations 500,400,300 $SUBJECT_PATH/$SUBJECT $SUBJECT_OUTPUT_PATH/$SUBJECT > /dev/null
 	fi
-
-	echo -e "\tProcessing volume $FILE_NAME"
-	echo -e "\tOutput volume path: $SUBJECT_OUTPUT_PATH/$SUBJECT\n"
-	if [ ! -d $SUBJECT_OUTPUT_PATH ]; then
-		mkdir -p $SUBJECT_OUTPUT_PATH
-	fi
-	echo -e "\tVolume $FILE_NAME submitted for bias correction on `date`"
-
-	Slicer --launch N4ITKBiasFieldCorrection --convergencethreshold 0.00001 --iterations 500,400,300 $SUBJECT_PATH/$SUBJECT $SUBJECT_OUTPUT_PATH/$SUBJECT > /dev/null
-
 done
