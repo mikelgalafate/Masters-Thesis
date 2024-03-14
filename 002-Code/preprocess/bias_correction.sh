@@ -14,11 +14,11 @@ do
 done
 
 if [ -z ${INPUT_PATH+x} ]; then
-	echo "ERROR: No input path given. You must specify the path to the data to be converted to nifti with the -input_path variable."
+	echo "ERROR: No input path given. You must specify the path to the data with the -input_path variable."
 	exit
 fi
 if [ -z ${SEQUENCE+x} ]; then
-	echo "ERROR: No sequence name given. You must specify the name of the sequence. Note that the name must be consistent with your database."
+	echo "ERROR: No sequence name given. You must specify the name of the sequence with the -sequence variable. Note that the name must be consistent with your database."
 	exit
 fi
 
