@@ -27,7 +27,7 @@ if __name__ == "__main__":
     experiment.model = utils.load_model(experiment.parameters, input_shape=(512, 512, 512))
 
     # Print model summary
-    if args.verbose:
-        model.summary()
+    if experiment.parameters.verbose:
+        experiment.model.summary()
 
 
