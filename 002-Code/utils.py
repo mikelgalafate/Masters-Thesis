@@ -3,16 +3,35 @@ import importlib
 import os
 import random
 import shutil
+from typing import Tuple
+
 from sklearn.model_selection import KFold, ShuffleSplit
 from tensorflow import keras
 from tqdm import tqdm
 
 
+ACCEPTED_FILES = {'h5': '(.h5)', 'json': '(.json)', 'pickle': '(*.pkl)'}
+
+
+def _ignore_other_features(input_features, output_features):
+    print("inside _ignore_other_features")
+    print([*input_features, *output_features])
+    words_to_accept = [*input_features, *output_features]
+
+    def _ignore_files(path, names):
+        return [name for name in names if not any(word.lower() in name.lower() for word in words_to_accept)]
+
+    return _ignore_files
+
+
 def split_data(path: str,
+               input_features: Tuple[str] = None,
+               output_features: Tuple[str] = None,
+               experiment_name: str = '',
+               n_folds: int = 1,
                train_frac: float = 0.7,
                validation_frac: float = 0.15,
                test_frac: float = 0.15,
-               n_folds: int = 1,
                random_state: int = 1) -> str:
     """Split data into n_folds and a test set to perform cross validation.
 
@@ -28,10 +47,13 @@ def split_data(path: str,
 
     Args:
         path (str): Path to the directory containing the data
-        train_frac (float): Fraction of data used for training
-        validation_frac (float): Fraction of data used for validation
-        test_frac (float): Fraction of data used for testing
+        input_features (Tuple[str]): Input features to be copied
+        output_features (Tuple[str]): Output features to be copied
+        experiment_name (str): Name of the experiment for which the dataset will be used
         n_folds (int): Number of folds
+        train_frac (float): Fraction of data used for training. If n_folds > 1, value will be ignored.
+        validation_frac (float): Fraction of data used for validation. If n_folds > 1, value will be ignored.
+        test_frac (float): Fraction of data used for testing
         random_state (int): Random state for shuffling
     Returns:
         output_dir (str): Path to the output directory where the splits will be created
@@ -68,8 +90,12 @@ def split_data(path: str,
         error("Train/Valid/Test partitions must sum to 1")
     if test_frac >= 1 or test_frac <= 0:
         error("Test fraction must be 0 < test_frac < 1")
+    if output_features is None:
+        output_features = []
+    if input_features is None:
+        input_features = []
 
-    output_dir = os.path.join(os.path.dirname(path), f'{n_folds}_Folds_test' if n_folds > 1 else 'dataset')
+    output_dir = os.path.join(os.path.dirname(path), experiment_name, f'{n_folds}_Folds_test' if n_folds > 1 else 'dataset')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     elif os.listdir(output_dir):
@@ -80,23 +106,26 @@ def split_data(path: str,
         return output_dir
 
     random.seed(random_state)
-
+    print("\nSplitting data...")
     # Get list of subfolders in the data folder
     subfolders = sorted([directory for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))])
     # Select the subjects for the test subset
     test_subjects = random.sample(subfolders, int(len(subfolders) * test_frac))
+    ignore_other_features = _ignore_other_features(input_features, output_features)
     print("Copying the test subjects...")
     for subject in tqdm(test_subjects):
-        shutil.copytree(os.path.join(path, subject), os.path.join(os.path.join(output_dir, "test"), subject))
+        shutil.copytree(os.path.join(path, subject),
+                        os.path.join(os.path.join(output_dir, "test"), subject),
+                        ignore=ignore_other_features)
 
     # Take the test subjects out of the subfolders list
     [subfolders.pop(subfolders.index(subject)) for subject in test_subjects]
 
     if n_folds > 1:
+        print(f"{n_folds} folds will be created")
         # Split the data into n splits with train and test sets
         kf = KFold(n_splits=n_folds, random_state=random_state, shuffle=True)
         splits = kf.split(subfolders)
-        print("\nSplitting data...")
     else:
         ss = ShuffleSplit(n_splits=1, test_size=test_frac, random_state=random_state)
         splits = ss.split(subfolders)
@@ -110,24 +139,34 @@ def split_data(path: str,
         # Copy the Train set for the i_th split
         for index in tqdm(train_index):
             shutil.copytree(os.path.join(path, subfolders[index]),
-                            os.path.join(fold_directory, "train", subfolders[index]))
+                            os.path.join(fold_directory, "train", subfolders[index]),
+                            ignore=ignore_other_features)
         print('Creating validation set...')
         # Copy the Validation set for the i_th split
         for index in tqdm(test_index):
             # Copy data from data_folder to fold_directory
             shutil.copytree(os.path.join(path, subfolders[index]),
-                            os.path.join(fold_directory, "validation", subfolders[index]))
+                            os.path.join(fold_directory, "validation", subfolders[index]),
+                            ignore=ignore_other_features)
 
     return output_dir
 
 
-def k_fold_split(path: str, n_folds: int = 5, random_state: int = 1) -> str:
+def k_fold_split(path: str,
+                 input_features: Tuple[str] = None,
+                 output_features: Tuple[str] = None,
+                 experiment_name: str = '',
+                 n_folds: int = 5,
+                 random_state: int = 1) -> str:
     """Split data into n_folds.
 
     Divides the dataset into n_folds. For each split, one fold is used for test,
     one for validation and the rest for train.
     Args:
         path (str): Path to the directory containing the data
+        input_features (Tuple[str]): Input features to be copied
+        output_features (Tuple[str]): Output features to be copied
+        experiment_name (str): Name of the experiment for which the dataset will be used
         n_folds (int): Number of folds
         random_state (int): Random state for shuffling
 
@@ -152,11 +191,14 @@ def k_fold_split(path: str, n_folds: int = 5, random_state: int = 1) -> str:
     """
     if not os.path.exists(path):
         error("Path to dataset does not exist")
-    if n_folds <= 1:
-        error("n_folds must be greater than 1")
+    if n_folds <= 2:
+        error("Number of folds must be greater than 2")
+    if output_features is None:
+        output_features = []
+    if input_features is None:
+        input_features = []
 
-    output_dir = os.path.join(os.path.dirname(path), f'{n_folds}_Folds')
-
+    output_dir = os.path.join(os.path.dirname(path), experiment_name, f'{n_folds}_Folds')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     elif os.listdir(output_dir):
@@ -174,8 +216,9 @@ def k_fold_split(path: str, n_folds: int = 5, random_state: int = 1) -> str:
     # Split the data into n splits with train and test sets
     kf = KFold(n_splits=n_folds, random_state=random_state, shuffle=True)
     splits = kf.split(subfolders)
-    print("Splitting data...")
+    print("\nSplitting data...")
     folds_list = [test_index for _, test_index in splits]
+    ignore_other_features = _ignore_other_features(input_features, output_features)
     for i in range(n_folds):
         print(f'\nCreating fold {i + 1}/{n_folds}')
         fold_directory = os.path.join(output_dir, f"split_{i + 1}")
@@ -188,17 +231,20 @@ def k_fold_split(path: str, n_folds: int = 5, random_state: int = 1) -> str:
         # Copy training set
         for index in tqdm(train_index):
             shutil.copytree(os.path.join(path, subfolders[index]),
-                            os.path.join(fold_directory, "train", subfolders[index]))
+                            os.path.join(fold_directory, "train", subfolders[index]),
+                            ignore=ignore_other_features)
         # Create the validation set with the (i - 1)_th fold
         print('Creating validation set...')
         for index in tqdm(folds_list[i - 1]):
             shutil.copytree(os.path.join(path, subfolders[index]),
-                            os.path.join(fold_directory, "validation", subfolders[index]))
+                            os.path.join(fold_directory, "validation", subfolders[index]),
+                            ignore=ignore_other_features)
         # Create the test set with the i_th fold
         print('Creating test set...')
         for index in tqdm(folds_list[i]):
             shutil.copytree(os.path.join(path, subfolders[index]),
-                            os.path.join(fold_directory, "test", subfolders[index]))
+                            os.path.join(fold_directory, "test", subfolders[index]),
+                            ignore=ignore_other_features)
 
     return output_dir
 
@@ -285,7 +331,7 @@ def warning(message: str):
     print('\nWARNING:', warn + '\n')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     pass
     k_fold_split("../001-Data/CERMEP-IDB-MRXFDG_Database/NII_with_FDG_NAC/sourcedata_BC")
     split_data("../001-Data/CERMEP-IDB-MRXFDG_Database/NII_with_FDG_NAC/sourcedata_BC", n_folds=5)
