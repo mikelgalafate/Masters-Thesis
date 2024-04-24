@@ -95,7 +95,10 @@ def split_data(path: str,
     if input_features is None:
         input_features = []
 
-    output_dir = os.path.join(os.path.dirname(path), experiment_name, f'{n_folds}_Folds_test' if n_folds > 1 else 'dataset')
+    output_dir = os.path.join(os.path.dirname(path),
+                              experiment_name,
+                              f'{n_folds}_Folds_test' if n_folds > 1 else 'dataset')
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     elif os.listdir(output_dir):
@@ -109,6 +112,7 @@ def split_data(path: str,
     print("\nSplitting data...")
     # Get list of subfolders in the data folder
     subfolders = sorted([directory for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))])
+
     # Select the subjects for the test subset
     test_subjects = random.sample(subfolders, int(len(subfolders) * test_frac))
     ignore_other_features = _ignore_other_features(input_features, output_features)
@@ -127,22 +131,24 @@ def split_data(path: str,
         kf = KFold(n_splits=n_folds, random_state=random_state, shuffle=True)
         splits = kf.split(subfolders)
     else:
-        ss = ShuffleSplit(n_splits=1, test_size=test_frac, random_state=random_state)
+        # Split the data to train and
+        ss = ShuffleSplit(n_splits=1, test_size=validation_frac, random_state=random_state)
         splits = ss.split(subfolders)
 
     for i, (train_index, test_index) in enumerate(splits):
         fold_directory = os.path.join(output_dir, f"split_{i + 1}" if n_folds > 1 else "")
         if not os.path.exists(fold_directory):
             os.makedirs(fold_directory)
+
         print(f'\nCreating fold {i + 1}/{n_folds}')
-        print('Creating train set...')
         # Copy the Train set for the i_th split
+        print('Creating train set...')
         for index in tqdm(train_index):
             shutil.copytree(os.path.join(path, subfolders[index]),
                             os.path.join(fold_directory, "train", subfolders[index]),
                             ignore=ignore_other_features)
-        print('Creating validation set...')
         # Copy the Validation set for the i_th split
+        print('Creating validation set...')
         for index in tqdm(test_index):
             # Copy data from data_folder to fold_directory
             shutil.copytree(os.path.join(path, subfolders[index]),
@@ -199,6 +205,7 @@ def k_fold_split(path: str,
         input_features = []
 
     output_dir = os.path.join(os.path.dirname(path), experiment_name, f'{n_folds}_Folds')
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     elif os.listdir(output_dir):
@@ -216,14 +223,16 @@ def k_fold_split(path: str,
     # Split the data into n splits with train and test sets
     kf = KFold(n_splits=n_folds, random_state=random_state, shuffle=True)
     splits = kf.split(subfolders)
+
     print("\nSplitting data...")
     folds_list = [test_index for _, test_index in splits]
     ignore_other_features = _ignore_other_features(input_features, output_features)
     for i in range(n_folds):
-        print(f'\nCreating fold {i + 1}/{n_folds}')
         fold_directory = os.path.join(output_dir, f"split_{i + 1}")
         if not os.path.exists(fold_directory):
             os.makedirs(fold_directory)
+
+        print(f'\nCreating fold {i + 1}/{n_folds}')
         print('Creating train set...')
         # Create a list with indexes not in fold i and (i - 1) for the training set
         train_folds = [list(item) for idx, item in enumerate(folds_list) if idx != i and idx != (i - 1) % n_folds]
