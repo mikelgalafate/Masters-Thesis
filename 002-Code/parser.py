@@ -128,7 +128,8 @@ class Parser:
                                  type=int, default=30,
                                  help="Number of patience epochs for early stopping")
         train_group.add_argument("-l", "--learning_rate", type=float, default=0.001, help="Learning rate")
-        # parser_.add_argument('-v', '--verbose', action='store_true', help='Display model summary')
+        train_group.add_argument("--large_dataset", action="store_true",
+                                 help="Only use if the dataset is large enough for k_folds with separate test set")
 
     def parse_arguments(self) -> argparse.Namespace:
         """Parse command line arguments.

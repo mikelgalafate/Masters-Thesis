@@ -30,4 +30,19 @@ if __name__ == "__main__":
     if experiment.parameters.verbose:
         experiment.model.summary()
 
+    # Train the model
+    if experiment.parameters.train:
 
+        # Split the dataset into k_folds
+        if hasattr(experiment.parameters, 'large_dataset') or experiment.parameters.folds == 1:
+            dataset_path = utils.split_data(experiment.parameters.input,
+                                            input_features=experiment.parameters.input_features,
+                                            output_features=experiment.parameters.ground_truth,
+                                            n_folds=experiment.parameters.folds)
+        else:
+            dataset_path = utils.k_fold_split(experiment.parameters.input,
+                                              input_features=experiment.parameters.input_features,
+                                              output_features=experiment.parameters.ground_truth,
+                                              n_folds=experiment.parameters.folds)
+
+        print(f"Dataset created in: {dataset_path}")
