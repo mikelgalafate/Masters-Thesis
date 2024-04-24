@@ -34,7 +34,7 @@ if __name__ == "__main__":
     if experiment.parameters.train:
 
         # Split the dataset into k_folds
-        if hasattr(experiment.parameters, 'large_dataset') or experiment.parameters.folds == 1:
+        if experiment.parameters.large_dataset or experiment.parameters.folds == 1:
             dataset_path = utils.split_data(experiment.parameters.input,
                                             input_features=experiment.parameters.input_features,
                                             output_features=experiment.parameters.ground_truth,
