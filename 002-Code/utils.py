@@ -14,11 +14,34 @@ ACCEPTED_FILES = {'h5': '(.h5)', 'json': '(.json)', 'pickle': '(*.pkl)'}
 
 
 def _ignore_other_features(input_features, output_features):
-    print("inside _ignore_other_features")
-    print([*input_features, *output_features])
+    """Function to ignore patterns for shutil.copytree()
+
+    Creates a new function that returns a list with the elements to be ignored by shutil.copytree()
+
+
+    Args:
+        input_features (list): List of the input features to be used.
+        output_features (list): List of the output features to be used.
+
+    Returns:
+        function: Function that returns a list with the elements to be ignored by shutil.copytree()
+
+    """
     words_to_accept = [*input_features, *output_features]
 
     def _ignore_files(path, names):
+        """Function to ignore patterns for shutil.copytree()
+
+        Receives the path and the names contained in the path and returns a list with the elements to be ignored by
+        shutil.copytree()
+        If a name is not contained in neither of the feature lists, it's added to the ignore list.
+        Args:
+            path (str): Path being analyzed
+            names (list): Names contained in the path
+
+        Returns:
+            List of the elements to be ignored by shutil.copytree()
+        """
         return [name for name in names if not any(word.lower() in name.lower() for word in words_to_accept)]
 
     return _ignore_files
@@ -139,8 +162,8 @@ def split_data(path: str,
         fold_directory = os.path.join(output_dir, f"split_{i + 1}" if n_folds > 1 else "")
         if not os.path.exists(fold_directory):
             os.makedirs(fold_directory)
-
-        print(f'\nCreating fold {i + 1}/{n_folds}')
+        if n_folds > 1:
+            print(f'\nCreating fold {i + 1}/{n_folds}')
         # Copy the Train set for the i_th split
         print('Creating train set...')
         for index in tqdm(train_index):
@@ -264,11 +287,12 @@ def module_name_to_class_name(string: str) -> str:
     Args:
         string: name of the module
 
-    Returns: name of the module in CapWords format
+    Returns:
+        name of the module in CapWords format
 
     Examples:
-        >>> module_name_to_class_name('module_containing_lowercase_with_underscores_class')
-        'ModuleContainingLowercaseWithUnderscoresClass'
+        >>> module_name_to_class_name('lowercase_with_underscores_module_with_class')
+        'LowercaseWithUnderscoresModuleWithClass'
 
     """
     # Split the string by underscores
@@ -278,25 +302,30 @@ def module_name_to_class_name(string: str) -> str:
     return ''.join(word.title() for word in words)
 
 
-def load_model(argv: argparse.Namespace, input_shape: tuple) -> keras.models.Model:
+def load_model(argv: argparse.Namespace, input_shape: tuple = None, experiment_name: str = None) -> keras.models.Model:
     """Load or create model.
 
     Loads a saved model or creates an instance of an available model.
     Args:
         argv (argparse.Namespace): Namespace containing either the path to the model or the model name
         input_shape (tuple): Input shape for the model
+        experiment_name (str): Name of the experiment to be run
 
     Returns:
         model (keras.Model): Keras model
 
     """
     if "architecture_name" in argv:
+        number_of_inputs = input_shape[0]
+        input_shape = input_shape[2:]
         module = importlib.import_module(f"networks.models.{argv.architecture_name}")
         module_class = getattr(module, module_name_to_class_name(argv.architecture_name))
         architecture = module_class(input_shape=input_shape,
+                                    number_of_inputs=number_of_inputs,
                                     num_blocks=argv.num_blocks,
+                                    learning_rate=argv.learning_rate,
                                     graph=argv.graph,
-                                    number_of_inputs=3) #
+                                    experiment_name=experiment_name)
         x = np.random.random(input_shape)
         model = architecture.get_model()
         return model
@@ -306,6 +335,15 @@ def load_model(argv: argparse.Namespace, input_shape: tuple) -> keras.models.Mod
         return model
 
 
+def check_gpus(set_cpu_only):
+    devices = tf.config.list_physical_devices("GPU")
+    if devices:
+        if set_cpu_only:
+            tf.config.set_visible_devices([], "GPU")
+        else:
+            print(f'Available: {devices}')
+    else:
+        print('No GPUs available.')
 def error(error_name: str):
     """Print an error message and exit
 

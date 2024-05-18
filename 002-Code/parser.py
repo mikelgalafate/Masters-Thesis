@@ -131,6 +131,7 @@ class Parser:
         train_group.add_argument("--large_dataset", action="store_true",
                                  help="Only use if the dataset is large enough for k_folds with separate test set")
         parser_.add_argument('-v', '--verbose', action='store_true', help='Display model summary')
+        parser_.add_argument('--cpu', action='store_true', help='Use CPU only')
 
     def parse_arguments(self) -> argparse.Namespace:
         """Parse command line arguments.
@@ -180,6 +181,7 @@ class Parser:
         # I/O arguments to predict with a pre-saved model
         self.add_in_out_arguments(predict_parser)
         predict_parser.add_argument('-v', '--verbose', action='store_true', help='Display model summary')
+        predict_parser.add_argument('--cpu', action='store_true', help='Use CPU only')
 
         # Train pre-saved model arguments
         self.add_in_out_arguments(train_parser)
